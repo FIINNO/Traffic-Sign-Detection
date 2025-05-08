@@ -76,11 +76,20 @@ def extract_class_distribution():
 
 # Convert annotations to yolo-format
 def convert_to_yolo():
-    annotation_folder = './annotations/'
-    output_folder = './annotations_yolo/'
+    annotation_folder = '../annotations/'
+    output_folder = '../annotations_yolo/'
 
-    with open('sorted_classes.json', 'r') as file:
+    with open('class_mapping.json', 'r') as file:
         class_dict = json.load(file)
+    with open('grouped_class_mapping.json', 'r') as file:
+        group_mapping = json.load(file)
+        label_to_group = {
+            label: group_name
+            for group_name, labels in group_mapping.items()
+            for label in labels
+        }
+
+
 
     counter = 0
     for filename in os.listdir(annotation_folder):
@@ -94,7 +103,8 @@ def convert_to_yolo():
 
             for obj in data['objects']:
                 label = obj['label']
-                class_id = class_dict[label]
+                group_label = label_to_group[label]
+                class_id = class_dict[group_label]
                 w = (obj['bbox']['xmax'] - obj['bbox']['xmin'])
                 h = (obj['bbox']['ymax'] - obj['bbox']['ymin'])
                 x_center = (obj['bbox']['xmin'] + w/2) / width
