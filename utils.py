@@ -1,5 +1,7 @@
 import os
 import json
+import shutil
+import random
 
 
 def extract_classes():
@@ -124,8 +126,41 @@ def convert_to_yolo():
                 print(counter)
 
 
+def create_test_split():
+    image_train_dir = "dataset_light/images/train"
+    label_train_dir = "dataset_light/labels/train"
+    image_test_dir = "dataset_light/images/test"
+    label_test_dir = "dataset_light/labels/test"
+    test_ratio = 0.2
 
-# sort_classes()
-# extract_classes()
-# extract_class_distribution()
-convert_to_yolo()
+    os.makedirs(image_test_dir, exist_ok=True)
+    os.makedirs(label_test_dir, exist_ok=True)
+
+    image_filenames = [f for f in os.listdir(image_train_dir)
+                       if os.path.isfile(os.path.join(image_train_dir, f))]
+
+
+    random.shuffle(image_filenames)
+    test_size = int(len(image_filenames) * test_ratio)
+    test_images = image_filenames[:test_size]
+
+    for image_file in test_images:
+        base_name, _ = os.path.splitext(image_file)
+
+        image_src = os.path.join(image_train_dir, image_file)
+        label_src = os.path.join(label_train_dir, base_name + ".txt")
+
+        image_dst = os.path.join(image_test_dir, image_file)
+        label_dst = os.path.join(label_test_dir, os.path.basename(label_src))
+
+        if os.path.exists(label_src):
+            shutil.move(image_src, image_dst)
+            shutil.move(label_src, label_dst)
+        else:
+            print(f"Warning: Label for {image_file} not found. Skipping.")
+
+    print(f"Moved {len(test_images)} image-label pairs to test split.")
+
+
+create_test_split()
+

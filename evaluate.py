@@ -74,7 +74,7 @@ def compute_metrics(preds, batch_list, iou_threshold=0.5, img_size=640):
 
         gt_boxes = gt['bboxes']
         gt_classes = gt['cls']
-        total_objects += len(gt_boxes)
+        total_objects += len(gt_classes)
 
         matched = []
         for pred_box, pred_class in zip(pred_boxes_xywh, pred_classes):
@@ -98,15 +98,15 @@ def compute_metrics(preds, batch_list, iou_threshold=0.5, img_size=640):
 
     fn = total_objects - tp
     print(f"Total tp: {tp}, fp: {fp}, fn: {fn}")
-    precision = tp / (tp + fp + 1e-9)
-    recall = tp / (total_objects + 1e-9)
+    precision = tp / (tp + fp)
+    recall = tp / total_objects
     print(f"Precision: {precision}, Recall: {recall}")
 
 
 
 
 
-def evaluate_yolo(model, test_loader):
+def evaluate_yolo(model, test_loader, iou_threshold=0.5):
     # evaluate on test dataset
     total_gt = []
     total_preds = []
@@ -125,52 +125,56 @@ def evaluate_yolo(model, test_loader):
             for i in range(output[0].size(0)):
                 total_preds.append(output[0][i].unsqueeze(0).cpu())
 
-    compute_metrics(total_preds, total_gt)
+    compute_metrics(total_preds, total_gt, iou_threshold=iou_threshold)
 
 
 
-def visualize_pred_vs_gt(img, gt, pred):
-    h, w = img.shape[:2]
-    gt_box = gt[0]
-    gt_cls = gt[1]
-    pred_box = pred[0]
-    pred_conf = pred[1]
-    pred_cls = pred[2]
-    print("box:", pred_box)
-    print("class:", pred_cls)
-    print("conf:", pred_conf)
+def visualize_pred_vs_gt(img, gt=None, nms=None):
+    preds = []
+    img_size = 640
+    if len(nms[0]) > 0:
+        for pred in nms[0]:
+            bbox = xyxy2xywh(pred[:4].unsqueeze(0))[0]
+            bbox[0] /= img_size
+            bbox[1] /= img_size
+            bbox[2] /= img_size
+            bbox[3] /= img_size
+            conf = pred[4].item()
+            cls = int(pred[5].item())
+            preds.append((bbox, conf, cls))
 
-    img_np = img.permute(1, 2, 0).numpy()
-    print("IMAGE", img_np)
-
+    img_np = img.permute(1, 2, 0).numpy()  # Convert image to numpy array (H, W, C)
     fig, ax = plt.subplots(1, 1, figsize=(8, 8))
     ax.imshow(img_np)
 
-    x_center, y_center, width, height = gt_box.tolist()
+    # Plot ground truth bounding boxes (if provided)
+    if gt:
+        for gt_box, gt_cls in gt:
+            print("GT_BOX:", gt_box)
+            x_center, y_center, width, height = gt_box.tolist()
+            x_min = (x_center - width / 2) * img_np.shape[1]
+            y_min = (y_center - height / 2) * img_np.shape[0]
+            box_w = width * img_np.shape[1]
+            box_h = height * img_np.shape[0]
+            rect = patches.Rectangle((x_min, y_min), box_w, box_h, linewidth=2, edgecolor='r', facecolor='none')
+            ax.add_patch(rect)
+            ax.text(x_min, y_min - 5, f"GT: {gt_cls}", color='r', fontsize=10, weight='bold')
 
-    # convert xywh to top-left corner (x_min, y_min)
-    x_min = (x_center - width / 2) * img_np.shape[1]
-    y_min = (y_center - height / 2) * img_np.shape[0]
-    box_w = width * img_np.shape[1]
-    box_h = height * img_np.shape[0]
+    # Plot predicted bounding boxes (if provided)
+    if preds:
+        for pred_box, pred_conf, pred_cls in preds:
+            print("PREDBOX:", pred_box)
+            x_center, y_center, width, height = pred_box.tolist()
+            x_min = (x_center - width / 2) * img_np.shape[1]
+            y_min = (y_center - height / 2) * img_np.shape[0]
+            box_w = width * img_np.shape[1]
+            box_h = height * img_np.shape[0]
+            rect = patches.Rectangle((x_min, y_min), box_w, box_h, linewidth=2, edgecolor='b', facecolor='none')
+            ax.add_patch(rect)
+            ax.text(x_min, y_min - 5, f"Pred: {pred_cls} ({pred_conf:.2f})", color='b', fontsize=10, weight='bold')
 
-    # create a rectangle patch
-    rect = patches.Rectangle((x_min, y_min), box_w, box_h, linewidth=1, edgecolor='r', facecolor='none')
-    ax.add_patch(rect)
-    # draw each bounding box
-    x_center, y_center, width, height = pred_box[0].tolist()
 
-    # convert xywh to top-left corner (x_min, y_min)
-    x_min = (x_center - width / 2) * img_np.shape[1]
-    y_min = (y_center - height / 2) * img_np.shape[0]
-    box_w = width * img_np.shape[1]
-    box_h = height * img_np.shape[0]
-
-    # create a rectangle patch
-    rect = patches.Rectangle((x_min, y_min), box_w, box_h, linewidth=1, edgecolor='b', facecolor='none')
-    ax.add_patch(rect)
-
-    plt.title("Image with Resized Bounding Boxes")
+    plt.title("Ground Truth and Predictions")
     plt.axis("off")
     plt.tight_layout()
     plt.show()
