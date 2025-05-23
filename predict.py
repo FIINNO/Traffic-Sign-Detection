@@ -32,16 +32,15 @@ def predict(img, model):
 
 
 
-checkpoint = torch.load('yolo11l.pt')
-cfg = checkpoint['model'].yaml
+# checkpoint = torch.load('yolo11l.pt')
+# cfg = checkpoint['model'].yaml
 
-model = DetectionModel(cfg=cfg, nc=243, ch=3, verbose=True)
-
+cfg = torch.load('yolol_cfg.yaml')
+model = DetectionModel(cfg=cfg)
 model.load_state_dict(torch.load('yolol_checkpoint_best.pth', map_location=lambda storage, loc: storage))
 
 img = cv2.imread('./img_6.png')
 predict(img, model)
-
 
 
 
