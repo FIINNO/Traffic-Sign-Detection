@@ -6,25 +6,32 @@ import numpy as np
 from letterbox import letterbox
 
 class YoloMapillaryDataset(Dataset):
-    def __init__(self, images_path, labels_path, img_size=640, transform=None):
-        self.images_path = images_path
-        self.labels_path = labels_path
+    def __init__(self, txt_split, images_dir, labels_dir, img_size=640, transform=None):
+        self.images_dir = images_dir
+        self.labels_dir = labels_dir
+        self.txt_split = txt_split
         self.img_size = img_size
         self.transform = transform
-        self.image_files = [f for f in os.listdir(images_path) if f.endswith((".jpg", ".png"))]
 
+        self.image_files = []
+        self.label_files = []
+        with open(txt_split, 'r') as txt_file:
+            for line in txt_file:
+                img_filename, label_filename = line.strip().split()
+                self.image_files.append(img_filename)
+                self.label_files.append(label_filename)
 
     def __len__(self):
         return len(self.image_files)
 
     def __getitem__(self, index):
-        img_path = os.path.join(self.images_path, self.image_files[index])
+        img_path = os.path.join(self.images_dir, self.image_files[index])
         img = cv2.imread(img_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
         # load labels
         labels = []
-        label_path = os.path.join(self.labels_path, os.path.splitext(self.image_files[index])[0] + '.txt')
+        label_path = os.path.join(self.labels_dir, self.label_files[index])
         if os.path.exists(label_path):
             with open(label_path, 'r') as f:
                 for line in f.readlines():
@@ -56,5 +63,6 @@ class YoloMapillaryDataset(Dataset):
           'img': img_tensor,
           'bboxes': boxes_tensor,
           'cls': classes_tensor,
-          'batch_idx': batch_idx_tensor
+          'batch_idx': batch_idx_tensor,
+          'img_name': self.image_files[index],
         }
