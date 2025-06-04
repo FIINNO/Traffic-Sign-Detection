@@ -8,6 +8,15 @@ import numpy as np
 import json
 from ultralytics.utils.metrics import bbox_iou
 from glob import glob
+import requests
+import os
+
+model_url = "https://github.com/FIINNO/Traffic-Sign-Detection/releases/download/v1/checkpoint_V8_best.pth"
+model_path = "yolo_checkpoint_best.pth"
+
+if not os.path.exists(model_path):
+    with open(model_path, 'wb') as f:
+        f.write(requests.get(model_url).content)
 
 
 @st.cache_resource
@@ -20,7 +29,7 @@ def load_class_map():
 def load_model():
     cfg = torch.load("yolol_cfg.yaml")
     model = DetectionModel(cfg=cfg)
-    model.load_state_dict(torch.load("checkpoint_V8_best.pth", map_location=lambda storage, loc: storage))
+    model.load_state_dict(torch.load("yolo_checkpoint_best.pth", map_location=lambda storage, loc: storage))
     return model
 
 def draw_boxes(img, preds):
