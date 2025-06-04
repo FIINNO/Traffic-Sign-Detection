@@ -89,7 +89,7 @@ if uploaded_file:
     file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
     image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     image, preds, padding, inference_time = predict(image, model)
-    #preds = filter_preds(preds)
+    preds = filter_preds(preds)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     result_image, detected_signs = draw_boxes(image, preds)
     height, width, _ = result_image.shape
