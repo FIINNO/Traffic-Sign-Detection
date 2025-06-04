@@ -84,11 +84,6 @@ def filter_preds(preds, iou_threshold = 0.5):
 
 model = load_model()
 
-image_paths = glob("test_images/*.jpg")
-image_list = [np.array(Image.open(p)) for p in image_paths]
-avg_inference, fps = benchmark_inferece(image_list, model)
-print(f"Avg inference: {avg_inference}, FPS: {fps}")
-
 index_to_class = load_class_map()
 
 st.title("Traffic Sign Detection")
